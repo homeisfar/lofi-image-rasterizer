@@ -12,6 +12,7 @@ public class DitherGrayscale {
     private BufferedImage original;
     private static BufferedImage output;
     private static double[][] luminosityMatrix;
+    private static double[] luminosityMatrixFast;
     // private static double  lum
 
     DitherGrayscale (BufferedImage origImage) {
@@ -20,6 +21,7 @@ public class DitherGrayscale {
               origImage.getHeight(), BufferedImage.TYPE_INT_RGB);
 
       luminosityMatrix = new double[origImage.getWidth()][origImage.getHeight()];
+      luminosityMatrixFast = new double[origImage.getWidth() * origImage.getHeight()];
 
               for (int i = 0; i < origImage.getWidth(); i++) {
                   for (int j = 0; j < origImage.getHeight(); j++) {
@@ -30,6 +32,7 @@ public class DitherGrayscale {
               int green = (color >>> 8) & 0xFF;
               int blue = (color >>> 0) & 0xFF;
               luminosityMatrix[i][j] = (red * 0.21f + green * 0.71f + blue * 0.07f) / 255;
+              luminosityMatrixFast[i + output.getWidth() * j] = (red * 0.21f + green * 0.71f + blue * 0.07f) / 255;
             }
           }
     }
@@ -87,8 +90,9 @@ public class DitherGrayscale {
         int[] imgData = ((DataBufferInt) output.getRaster().getDataBuffer()).getData();
 
         // System.out.println(imgData.length);
-        for (int i = 0; i < output.getWidth(); i++) {
-            for (int j = 0; j < output.getHeight(); j++) {
+        for (int i = 0; i < luminosityMatrixFast.length; i++) {
+        // for (int i = 0; i < output.getWidth(); i++) {
+            // for (int j = 0; j < output.getHeight(); j++) {
 
                 // int color = origImage.getRGB(i, j);
                 //
@@ -98,17 +102,16 @@ public class DitherGrayscale {
 
                 // double lum = (red * 0.21f + green * 0.71f + blue * 0.07f) / 255.0 * luminosityScale;
 
-
-
-                double lum = luminosityMatrix[i][j] * luminosityScale;
-                if (lum <= randomThreshold[rn.nextInt(randomThreshold.length)]) {
+                // double lum = luminosityMatrix[i][j] * luminosityScale;
+                if (luminosityMatrixFast[i] <= randomThreshold[rn.nextInt(randomThreshold.length)]) {
                     // output.setRGB(i, j, 0x000000);
-                    imgData[i * output.getWidth() + j] = 0x000000;
+                    imgData[i] = 0x000000;
                 } else {
                     // output.setRGB(i, j, 0xFFFFFF);
-                    imgData[i * output.getWidth() + j] = 0xFFFFFF;
-                }
+                    imgData[i] = 0xFFFFFF;
+                // }
             }
+        // }
         }
         return output;
     }
