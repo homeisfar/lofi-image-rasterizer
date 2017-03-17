@@ -14,7 +14,7 @@ public class DitherGrayscale {
     private static BufferedImage output;
     private static int[] imgData; // direct access to underlying bufferedimage data
     private static double[] luminosityMatrixFast; // internal representation for operations.
-    private static double[] cloneMatrix; // MARK
+    private static double[] cloneMatrix;    // Copy for non-destructive error-diffusion. Probably can refactor out. //MARK
     private static SplittableRandom rand = new SplittableRandom();
     public static double luminosityScale = 1.0;
 
@@ -28,7 +28,7 @@ public class DitherGrayscale {
         origImage.getHeight(), BufferedImage.TYPE_INT_ARGB);
 
         luminosityMatrixFast = new double[origImage.getWidth() * origImage.getHeight()];
-        cloneMatrix = new double[luminosityMatrixFast.length]; //MARK
+        cloneMatrix = new double[luminosityMatrixFast.length];
 
         for (int i = 0; i < origImage.getWidth(); i++) {
             for (int j = 0; j < origImage.getHeight(); j++) {
@@ -50,8 +50,10 @@ public class DitherGrayscale {
         0.54, 0.55, 0.56, 0.57, 0.58, 0.59, 0.6, 0.61, 0.62, 0.63, 0.64,
         0.65, 0.66, 0.67, 0.68, 0.69 };
 
-        private static final double[] bayer2x2 =
-        {0, 0.5, 0.75, 0.25};
+        private static double[] simpleThreshold = {0.5};
+
+        private static double[] bayer2x2 = //MARK unfinalized for control option to edit
+        {0, 2, 3, 1};
 
         private static final double[] bayer4x4 =
         {0, 8, 2, 10,
@@ -80,12 +82,12 @@ public class DitherGrayscale {
         0, 0, 0, 0, 0, 0, 0, 0};
 
         static {
-            for (int i = 0; i < bayer4x4.length; i++) {
-                    bayer4x4[i] /= 16;
-            }
-            for (int i = 0; i < bayer8x8.length; i++) {
-                    bayer8x8[i] /= 64;
-            }
+            for (int i = 0; i < bayer2x2.length; i++)
+                bayer2x2[i] /= 4;
+            for (int i = 0; i < bayer4x4.length; i++)
+                bayer4x4[i] /= 16;
+            for (int i = 0; i < bayer8x8.length; i++)
+                bayer8x8[i] /= 64;
         }
 
         public static BufferedImage dispatchDithering (Dither d) {
@@ -113,11 +115,12 @@ public class DitherGrayscale {
         }
 
         private static final void randomThresholdDither() {
-            for (int i = 0; i < luminosityMatrixFast.length; i++) {
-                imgData[i] = luminosityMatrixFast[i] * luminosityScale <=
-                randomThreshold[rand.nextInt(randomThreshold.length)]
-                ? BLACK : WHITE;
-            }
+            // for (int i = 0; i < luminosityMatrixFast.length; i++) {
+            //     imgData[i] = luminosityMatrixFast[i] * luminosityScale <=
+            //     randomThreshold[rand.nextInt(randomThreshold.length)]
+            //     ? BLACK : WHITE;
+            // }
+            IntStream.range(0, output.getHeight()).parallel().forEach(i -> parallelRandomDither(i * output.getWidth()));
         }
 
         /*  Threshold = COLOR(256/4, 256/4, 256/4); // Estimated precision of the palette
@@ -127,18 +130,19 @@ public class DitherGrayscale {
         Color = FindClosestColorFrom(Palette, Attempt)
         Draw pixel using Color */
         private static final void orderedDither2x2() {
-            int bayerVerticalOffset = -1;
-            int simple = 1;
-            for (int i = 0; i < luminosityMatrixFast.length; i++) {
-                if (i % output.getWidth() == 0) {
-                    bayerVerticalOffset++;
-                    if (bayerVerticalOffset == 2)
-                        bayerVerticalOffset = 0;
-                }
-                simple ^= 1;
-                imgData[i] = luminosityMatrixFast[i] * luminosityScale <= bayer2x2[simple + bayerVerticalOffset]
-                ? BLACK : WHITE;
-            }
+            // int bayerVerticalOffset = -1;
+            // int simple = 1;
+            // for (int i = 0; i < luminosityMatrixFast.length; i++) {
+            //     if (i % output.getWidth() == 0) {
+            //         bayerVerticalOffset++;
+            //         if (bayerVerticalOffset == 2)
+            //             bayerVerticalOffset = 0;
+            //     }
+            //     simple ^= 1;
+            //     imgData[i] = luminosityMatrixFast[i] * luminosityScale <= bayer2x2[simple + bayerVerticalOffset]
+            //     ? BLACK : WHITE;
+            // }
+            IntStream.range(0, output.getHeight()).parallel().forEach(i -> parallelOrderedDither(i * output.getWidth(), Dither.BAYER2X2));
         }
 
 /*
@@ -159,20 +163,21 @@ public class DitherGrayscale {
 */
 
         private static final void orderedDither4x4() {
-            int bayerVerticalOffset = -4;
-            int simple = -1;
-            for (int i = 0; i < luminosityMatrixFast.length; i++) {
-                if (i % output.getWidth() == 0) {
-                    bayerVerticalOffset += 4;
-                    if (bayerVerticalOffset == 16) {
-                        bayerVerticalOffset = 0;
-                    }
-                }
-                simple++;
-                if (simple == 4) simple = 0;
-                imgData[i] = luminosityMatrixFast[i] * luminosityScale <= bayer4x4[simple + bayerVerticalOffset]
-                ? BLACK : WHITE;
-            }
+            // int bayerVerticalOffset = -4;
+            // int simple = -1;
+            // for (int i = 0; i < luminosityMatrixFast.length; i++) {
+            //     if (i % output.getWidth() == 0) {
+            //         bayerVerticalOffset += 4;
+            //         if (bayerVerticalOffset == 16) {
+            //             bayerVerticalOffset = 0;
+            //         }
+            //     }
+            //     simple++;
+            //     if (simple == 4) simple = 0;
+            //     imgData[i] = luminosityMatrixFast[i] * luminosityScale <= bayer4x4[simple + bayerVerticalOffset]
+            //     ? BLACK : WHITE;
+            // }
+            IntStream.range(0, output.getHeight()).parallel().forEach(i -> parallelOrderedDither(i * output.getWidth(), Dither.BAYER4X4));
         }
 
 
@@ -191,25 +196,95 @@ public class DitherGrayscale {
             //         imgData[i] = luminosityMatrixFast[i] * luminosityScale <= bayer8x8[simple + bayerVerticalOffset]
             //     ? BLACK : WHITE;
             // }
-            IntStream.range(0, luminosityMatrixFast.length).parallel().forEach(i -> lumiTest(i, imgData));
+            // IntStream.range(0, luminosityMatrixFast.length).parallel().forEach(i -> parallelOrderedDither(i, imgData));
+            IntStream.range(0, output.getHeight()).parallel().forEach(i -> parallelOrderedDither(i * output.getWidth(), Dither.BAYER8X8));
         }
 
-        private static final void lumiTest(int i, int[] imgData) {
-            int bayerVerticalOffset = i / output.getWidth();
-            bayerVerticalOffset = bayerVerticalOffset - ((bayerVerticalOffset >>> 3) << 3);
-            bayerVerticalOffset = bayerVerticalOffset << 3;
-            imgData[i] = luminosityMatrixFast[i] * luminosityScale <= bayer8x8[i%8 + bayerVerticalOffset]
-            ? BLACK : WHITE;
+        private static final void parallelOrderedDither(int i, Dither d) {
+            double[] bayer;
+            int bayerLength;
+            int bayerVerticalOffset;
+
+            switch (d) {
+                case SIMPLE:
+                    bayer = simpleThreshold;
+                    bayerLength = 1;
+                    bayerVerticalOffset = 0;
+                    break;
+                case BAYER2X2:
+                    bayer = bayer2x2;
+                    bayerLength = 2;
+                    bayerVerticalOffset = (i % 2) << 1;
+                    // System.out.println("2x2");
+                    break;
+                case BAYER4X4:
+                    bayer = bayer4x4;
+                    bayerLength = 4;
+                    bayerVerticalOffset = (i % 4) << 2;
+                    // System.out.println("4x4");
+                    break;
+                case BAYER8X8:
+                    bayer = bayer8x8;
+                    bayerLength = 8;
+                    bayerVerticalOffset = (i % 8) << 3;
+                    // System.out.println("8x8");
+                    break;
+                default:
+                    bayer = null;
+                    bayerLength = 0;
+                    bayerVerticalOffset = 0;
+                    break;
+            }
+
+            int bayerHorizontalOffset = -1;
+            for (int c = i; c < i + output.getWidth(); c++) {
+                bayerHorizontalOffset++;
+                if (bayerHorizontalOffset == bayerLength)
+                    bayerHorizontalOffset = 0;
+                    imgData[c] = luminosityMatrixFast[c] * luminosityScale <= bayer[bayerHorizontalOffset + bayerVerticalOffset]
+                ? BLACK : WHITE;
+            }
         }
+
+        private static final void parallelRandomDither(int i) {
+            // for (int i = 0; i < luminosityMatrixFast.length; i++) {
+            //     imgData[i] = luminosityMatrixFast[i] * luminosityScale <=
+            //     randomThreshold[rand.nextInt(randomThreshold.length)]
+            //     ? BLACK : WHITE;
+            // }
+
+            SplittableRandom newRand = rand.split(); // unnecessary
+            for (int c = i; c < i + output.getWidth(); c++) {
+                imgData[c] = luminosityMatrixFast[c] * luminosityScale <= randomThreshold[newRand.nextInt(randomThreshold.length)]
+                ? BLACK : WHITE;
+            }
+        }
+
+        // private static final void parallelOrderedDither(int i, int[] imgData) {
+        //     int bayerVerticalOffset = i / output.getWidth();
+        //     bayerVerticalOffset = bayerVerticalOffset - ((bayerVerticalOffset >>> 3) << 3);
+        //     bayerVerticalOffset = bayerVerticalOffset << 3;
+        //     imgData[i] = luminosityMatrixFast[i] * luminosityScale <= bayer8x8[i%8 + bayerVerticalOffset]
+        //     ? BLACK : WHITE;
+        // }
 
 
         private static final void simple() {
-                for (int i = 0; i < luminosityMatrixFast.length; i++) {
-                    imgData[i] = luminosityMatrixFast[i] * luminosityScale <= 0.5
-                    ? BLACK : WHITE;
-                }
+                // for (int i = 0; i < luminosityMatrixFast.length; i++) {
+                //     imgData[i] = luminosityMatrixFast[i] * luminosityScale <= 0.5
+                //     ? BLACK : WHITE;
+                // }
                 // IntStream.range(0, luminosityMatrixFast.length).parallel().forEach(i -> lumiTest(i, imgData));
+                // IntStream.range(0, output.getHeight()).parallel().forEach(i -> lumiTest(i * output.getWidth()));
+                IntStream.range(0, output.getHeight()).parallel().forEach(i -> parallelOrderedDither(i * output.getWidth(), Dither.SIMPLE));
         }
+
+        // private static final void lumiTest(int i) {
+        //     for (int c = i; c < i + output.getWidth(); c++) {
+        //             imgData[c] = luminosityMatrixFast[c] * luminosityScale <= 0.5
+        //         ? BLACK : WHITE;
+        //     }
+        // }
 
         /* FS
         for each y from top to bottom
@@ -226,8 +301,8 @@ public class DitherGrayscale {
 
         private static void floydSteinberg() {
             System.arraycopy(luminosityMatrixFast, 0, cloneMatrix, 0, luminosityMatrixFast.length);
-            for (int i = 0; i < output.getHeight(); i++) { //MARK
-                for (int j = 0; j < output.getWidth(); j++ ) { //MARK
+            for (int i = 0; i < output.getHeight(); i++) {
+                for (int j = 0; j < output.getWidth(); j++ ) {
                     int index = i * output.getWidth() + j;
                     double oldPixel =  (cloneMatrix[index]);
                     imgData[index] = oldPixel * luminosityScale <= 0.5 ? BLACK : WHITE;
@@ -246,13 +321,6 @@ public class DitherGrayscale {
                     /* no if */                    cloneMatrix[index + output.getWidth()    ] += quantError * (5.0 / 16.0);
                     if (j + 1 < output.getWidth()) cloneMatrix[index + output.getWidth() + 1] += quantError * (7.0 / 16.0);
                 }
-                // System.out.println();
             }
-
         }
-
-        // private static final void lumiTest(int i, int[] imgData) {
-        //     imgData[i] = luminosityMatrixFast[i] * luminosityScale <= 0.5
-        //     ? BLACK : WHITE;
-        // }
     }

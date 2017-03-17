@@ -106,8 +106,9 @@ public class DitherComparator extends Application {
     public void start(Stage primaryStage) {
         ScrollPane scrollPane = new ScrollPane();
         functionToolbar.setOrientation(Orientation.VERTICAL);
-        Button controlOpenButton = new Button();
-        Button controlSaveButton = new Button();
+        Button controlOpenButton = new Button("Open Image");
+        Button controlSaveButton = new Button("Save Image");
+        Button controlBayerButton = new Button("Modify Bayer");
         Slider luminositySlider = new Slider(0, 3, 1.0);
         luminositySlider.setShowTickMarks(true);
         TextField luminosityTextField = new TextField (Double.toString(luminositySlider.getValue()));
@@ -119,8 +120,8 @@ public class DitherComparator extends Application {
         createDitherButton(new Button("Simple"), DitherGrayscale.Dither.SIMPLE);
         createDitherButton(new Button("FloydStein"), DitherGrayscale.Dither.FS);
 
-        controlOpenButton.setText("Open Image");
-        controlSaveButton.setText("Save Image");
+        // controlOpenButton.setText("Open Image");
+        // controlSaveButton.setText("Save Image");
 
         imageView.setFitWidth(200);
         imageView.setPreserveRatio(true);
@@ -133,6 +134,7 @@ public class DitherComparator extends Application {
 
         /////////////////////////////////
         // Control Handlers
+        /////////////////////////////////
 
         // Open Dialog and set preview
         @Override
@@ -163,9 +165,18 @@ public class DitherComparator extends Application {
     }
     });
 
+    //Bayer matrix modify handler
+    controlBayerButton.setOnAction(new EventHandler<ActionEvent>() {
+    @Override
+    public void handle(ActionEvent event) {
+
+    }
+    });
+
 
     ///////////////////////////
     // Function handlers
+    ///////////////////////////
 
         // Slider handler
     luminositySlider.valueProperty().addListener(new ChangeListener<Number>() {
@@ -202,6 +213,7 @@ public class DitherComparator extends Application {
 
         controlToolbar.getItems().add(controlOpenButton);
         controlToolbar.getItems().add(controlSaveButton);
+        controlToolbar.getItems().add(controlBayerButton);
         functionToolbar.getItems().add(luminositySlider);
         functionToolbar.getItems().add(luminosityTextField);
         functionToolbar.getItems().add(imageView);
