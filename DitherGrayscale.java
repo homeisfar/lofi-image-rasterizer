@@ -142,7 +142,7 @@ public class DitherGrayscale {
             //     imgData[i] = luminosityMatrixFast[i] * luminosityScale <= bayer2x2[simple + bayerVerticalOffset]
             //     ? BLACK : WHITE;
             // }
-            IntStream.range(0, output.getHeight()).parallel().forEach(i -> parallelOrderedDither(i * output.getWidth(), Dither.BAYER2X2));
+            IntStream.range(0, output.getHeight()).parallel().forEach(i -> parallelOrderedDither(i, i * output.getWidth(), Dither.BAYER2X2));
         }
 
 /*
@@ -177,7 +177,7 @@ public class DitherGrayscale {
             //     imgData[i] = luminosityMatrixFast[i] * luminosityScale <= bayer4x4[simple + bayerVerticalOffset]
             //     ? BLACK : WHITE;
             // }
-            IntStream.range(0, output.getHeight()).parallel().forEach(i -> parallelOrderedDither(i * output.getWidth(), Dither.BAYER4X4));
+            IntStream.range(0, output.getHeight()).parallel().forEach(i -> parallelOrderedDither(i, i * output.getWidth(), Dither.BAYER4X4));
         }
 
 
@@ -197,10 +197,10 @@ public class DitherGrayscale {
             //     ? BLACK : WHITE;
             // }
             // IntStream.range(0, luminosityMatrixFast.length).parallel().forEach(i -> parallelOrderedDither(i, imgData));
-            IntStream.range(0, output.getHeight()).parallel().forEach(i -> parallelOrderedDither(i * output.getWidth(), Dither.BAYER8X8));
+            IntStream.range(0, output.getHeight()).parallel().forEach(i -> parallelOrderedDither(i, i * output.getWidth(), Dither.BAYER8X8));
         }
 
-        private static final void parallelOrderedDither(int i, Dither d) {
+        private static final void parallelOrderedDither(int row, int i, Dither d) {
             double[] bayer;
             int bayerLength;
             int bayerVerticalOffset;
@@ -214,19 +214,21 @@ public class DitherGrayscale {
                 case BAYER2X2:
                     bayer = bayer2x2;
                     bayerLength = 2;
-                    bayerVerticalOffset = (i % 2) << 1;
+                    System.out.print(" "+ i );
+                    bayerVerticalOffset = (row % 2);
+                    // System.out.print(" "+bayerVerticalOffset);
                     // System.out.println("2x2");
                     break;
                 case BAYER4X4:
                     bayer = bayer4x4;
                     bayerLength = 4;
-                    bayerVerticalOffset = (i % 4) << 2;
+                    bayerVerticalOffset = (row % 4) << 2;
                     // System.out.println("4x4");
                     break;
                 case BAYER8X8:
                     bayer = bayer8x8;
                     bayerLength = 8;
-                    bayerVerticalOffset = (i % 8) << 3;
+                    bayerVerticalOffset = (row % 8) << 3;
                     // System.out.println("8x8");
                     break;
                 default:
@@ -247,12 +249,6 @@ public class DitherGrayscale {
         }
 
         private static final void parallelRandomDither(int i) {
-            // for (int i = 0; i < luminosityMatrixFast.length; i++) {
-            //     imgData[i] = luminosityMatrixFast[i] * luminosityScale <=
-            //     randomThreshold[rand.nextInt(randomThreshold.length)]
-            //     ? BLACK : WHITE;
-            // }
-
             SplittableRandom newRand = rand.split(); // unnecessary
             for (int c = i; c < i + output.getWidth(); c++) {
                 imgData[c] = luminosityMatrixFast[c] * luminosityScale <= randomThreshold[newRand.nextInt(randomThreshold.length)]
@@ -276,7 +272,7 @@ public class DitherGrayscale {
                 // }
                 // IntStream.range(0, luminosityMatrixFast.length).parallel().forEach(i -> lumiTest(i, imgData));
                 // IntStream.range(0, output.getHeight()).parallel().forEach(i -> lumiTest(i * output.getWidth()));
-                IntStream.range(0, output.getHeight()).parallel().forEach(i -> parallelOrderedDither(i * output.getWidth(), Dither.SIMPLE));
+                IntStream.range(0, output.getHeight()).parallel().forEach(i -> parallelOrderedDither(i, i * output.getWidth(), Dither.SIMPLE));
         }
 
         // private static final void lumiTest(int i) {
