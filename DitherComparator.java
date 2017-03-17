@@ -12,6 +12,7 @@ import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
 import javafx.scene.image.ImageView;
 import javafx.scene.image.Image;
+import javafx.scene.image.WritableImage;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.BorderPane;
@@ -46,6 +47,7 @@ public class DitherComparator extends Application {
     private ImageView outputView = new ImageView();
     private Image imagefx;
     private Image outputfx;
+    private WritableImage outputWritableImage;
     private HBox horizBox = new HBox();
     private VBox vertBox = new VBox();
     private VBox layoutBox = new VBox();
@@ -53,48 +55,52 @@ public class DitherComparator extends Application {
     private ToolBar controlToolbar = new ToolBar();
     private ToolBar functionToolbar = new ToolBar();
 
-    private static final Map<String, String> functions;
+    private static final Map<String, DitherGrayscale.Dither> functions;
     static
     {
-        functions = new HashMap<String, String>();
-        functions.put(RANDOM_THRESHOLD_DITHER, "randomThresholdDither");
-        functions.put(BAYER2X2_DITHER, "orderedDither2x2");
-        functions.put(BAYER4X4_DITHER, "orderedDither4x4");
-        functions.put(BAYER8X8_DITHER, "orderedDither8x8");
-        functions.put(SIMPLE_DITHER, "simple");
+        functions = new HashMap<String, DitherGrayscale.Dither>();
+        functions.put(RANDOM_THRESHOLD_DITHER, DitherGrayscale.Dither.RANDOM);
+        functions.put(BAYER2X2_DITHER, DitherGrayscale.Dither.BAYER2X2);
+        functions.put(BAYER4X4_DITHER, DitherGrayscale.Dither.BAYER4X4);
+        functions.put(BAYER8X8_DITHER, DitherGrayscale.Dither.BAYER8X8);
+        functions.put(SIMPLE_DITHER, DitherGrayscale.Dither.SIMPLE);
     }
 
     class ditherButtonHandler implements EventHandler<ActionEvent> {
         private final String buttonString; //these final variables are very important. gotta research why.
         private final Button button;
-        ditherButtonHandler(Button s) {
-            this.buttonString = s.getText();
-            this.button = s;
+        ditherButtonHandler(Button b) {
+            this.buttonString = b.getText();
+            this.button = b;
             // System.out.println(s.getText());
-
         }
+
+        // Handler that calls algorithms
         @Override
         public void handle(ActionEvent event) {
             lastButtonPressed = this.button;
             if (original != null) {
                 try {
                 long startTime = System.nanoTime();
-                output = (BufferedImage) DitherGrayscale.class.
-                // getDeclaredMethod(functions.get(buttonString), BufferedImage.class).invoke(null, original);
-                getDeclaredMethod(functions.get(buttonString)).invoke(null);
+                // CAREFUL: (1) goes together and (2) is commented out
+                //(1)output = (BufferedImage) DitherGrayscale.class.
+                //(2)getDeclaredMethod(functions.get(buttonString), BufferedImage.class).invoke(null, original);
+                //(1)getDeclaredMethod(functions.get(buttonString)).invoke(null);
+                output = DitherGrayscale.dispatchDithering(functions.get(buttonString));
                 long endTime = System.nanoTime();
                 long timed = (endTime - startTime) / 1000000;
-                System.out.println("algorithm time: "+timed);
+                System.out.println("algorithm time: " + timed);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
                 long startTime = System.nanoTime();
-                outputfx = SwingFXUtils.toFXImage(output, null);
+                /*outputfx = */SwingFXUtils.toFXImage(output, outputWritableImage);
 
+                // outputView.setImage(outputWritableImage);
                 long endTime = System.nanoTime();
                 long timed = (endTime - startTime) / 1000000;
+
                 System.out.println("convert to javafx time:" + timed);
-                outputView.setImage(outputfx);
                 // System.gc();
             }
         }
@@ -112,7 +118,7 @@ public class DitherComparator extends Application {
         Button dither5Button = new Button();
         Button saveButton = new Button();
         ScrollPane scrollPane = new ScrollPane();
-        Slider luminositySlider = new Slider(0, 6, 1.0);
+        Slider luminositySlider = new Slider(0, 3, 1.0);
         final TextField luminosityTextField = new TextField (Double.toString(luminositySlider.getValue()));
         luminositySlider.setShowTickMarks(true);
 
@@ -141,6 +147,7 @@ public class DitherComparator extends Application {
 
         openButton.setOnAction(new EventHandler<ActionEvent>() {
 
+        // Open Dialog and set preview
         @Override
         public void handle(ActionEvent event) {
             FileChooser chooser = new FileChooser();
@@ -246,6 +253,8 @@ public class DitherComparator extends Application {
         try {
             original = ImageIO.read(loadedPath);
             new DitherGrayscale(original);
+            outputWritableImage = new WritableImage(original.getWidth(), original.getHeight());
+            outputView.setImage(outputWritableImage);
             imagefx = SwingFXUtils.toFXImage(original, null);
         } catch (IOException ex) {
             ex.printStackTrace();
