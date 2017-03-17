@@ -55,30 +55,21 @@ public class DitherComparator extends Application {
     private ToolBar controlToolbar = new ToolBar();
     private ToolBar functionToolbar = new ToolBar();
 
-    private static final Map<String, DitherGrayscale.Dither> functions;
-    static
-    {
-        functions = new HashMap<String, DitherGrayscale.Dither>();
-        functions.put(RANDOM_THRESHOLD_DITHER, DitherGrayscale.Dither.RANDOM);
-        functions.put(BAYER2X2_DITHER, DitherGrayscale.Dither.BAYER2X2);
-        functions.put(BAYER4X4_DITHER, DitherGrayscale.Dither.BAYER4X4);
-        functions.put(BAYER8X8_DITHER, DitherGrayscale.Dither.BAYER8X8);
-        functions.put(SIMPLE_DITHER, DitherGrayscale.Dither.SIMPLE);
-    }
+    private Map<String, DitherGrayscale.Dither> functions = new HashMap<String, DitherGrayscale.Dither>();
 
+    // custom handler for multiple dither buttons
     class ditherButtonHandler implements EventHandler<ActionEvent> {
         private final String buttonString; //these final variables are very important. gotta research why.
         private final Button button;
         ditherButtonHandler(Button b) {
             this.buttonString = b.getText();
             this.button = b;
-            // System.out.println(s.getText());
         }
 
         // Handler that calls algorithms
         @Override
         public void handle(ActionEvent event) {
-            lastButtonPressed = this.button;
+            lastButtonPressed = this.button; //MARK
             if (original != null) {
                 try {
                 long startTime = System.nanoTime();
@@ -86,7 +77,7 @@ public class DitherComparator extends Application {
                 //(1)output = (BufferedImage) DitherGrayscale.class.
                 //(2)getDeclaredMethod(functions.get(buttonString), BufferedImage.class).invoke(null, original);
                 //(1)getDeclaredMethod(functions.get(buttonString)).invoke(null);
-                output = DitherGrayscale.dispatchDithering(functions.get(buttonString));
+                output = DitherGrayscale.dispatchDithering(functions.get(button)); //MARK
                 long endTime = System.nanoTime();
                 long timed = (endTime - startTime) / 1000000;
                 System.out.println("algorithm time: " + timed);
@@ -94,14 +85,12 @@ public class DitherComparator extends Application {
                     e.printStackTrace();
                 }
                 long startTime = System.nanoTime();
-                /*outputfx = */SwingFXUtils.toFXImage(output, outputWritableImage);
+                SwingFXUtils.toFXImage(output, outputWritableImage);
 
-                // outputView.setImage(outputWritableImage);
                 long endTime = System.nanoTime();
                 long timed = (endTime - startTime) / 1000000;
 
                 System.out.println("convert to javafx time:" + timed);
-                // System.gc();
             }
         }
     }
@@ -110,25 +99,25 @@ public class DitherComparator extends Application {
     public void start(Stage primaryStage) {
 
         functionToolbar.setOrientation(Orientation.VERTICAL);
-        Button openButton = new Button();
+        Button controlOpenButton = new Button();
         Button dither1Button = new Button();
         Button dither2Button = new Button();
         Button dither3Button = new Button();
         Button dither4Button = new Button();
         Button dither5Button = new Button();
-        Button saveButton = new Button();
+        Button controlSaveButton = new Button();
         ScrollPane scrollPane = new ScrollPane();
         Slider luminositySlider = new Slider(0, 3, 1.0);
         final TextField luminosityTextField = new TextField (Double.toString(luminositySlider.getValue()));
         luminositySlider.setShowTickMarks(true);
 
-        openButton.setText("Open Image");
+        controlOpenButton.setText("Open Image");
         dither1Button.setText(RANDOM_THRESHOLD_DITHER);
         dither2Button.setText(BAYER2X2_DITHER);
-        dither3Button.setText(SIMPLE_DITHER);
+        dither3Button.setText(SIMPLE_DITHER); //MARK
         dither4Button.setText(BAYER4X4_DITHER);
         dither5Button.setText(BAYER8X8_DITHER);
-        saveButton.setText("Save Image");
+        controlSaveButton.setText("Save Image");
 
         dither1Button.setOnAction(new ditherButtonHandler(dither1Button));
         dither2Button.setOnAction(new ditherButtonHandler(dither2Button));
@@ -136,16 +125,23 @@ public class DitherComparator extends Application {
         dither4Button.setOnAction(new ditherButtonHandler(dither4Button));
         dither5Button.setOnAction(new ditherButtonHandler(dither5Button));
 
+         //MARK
+        functions.put(dither1Button, DitherGrayscale.Dither.RANDOM);
+        functions.put(Dither2Button, DitherGrayscale.Dither.BAYER2X2);
+        functions.put(Dither3Button, DitherGrayscale.Dither.BAYER4X4);
+        functions.put(Dither4Button, DitherGrayscale.Dither.BAYER8X8);
+        functions.put(Dither5Button, DitherGrayscale.Dither.SIMPLE);
+
+
+
         imageView.setFitWidth(200);
         imageView.setPreserveRatio(true);
         imageView.setSmooth(true);
 
-        // outputView.setFitWidth(400);
         outputView.setPreserveRatio(true);
         outputView.setSmooth(false);
-        // outputView.setCache(true);
 
-        openButton.setOnAction(new EventHandler<ActionEvent>() {
+        controlOpenButton.setOnAction(new EventHandler<ActionEvent>() {
 
         // Open Dialog and set preview
         @Override
@@ -155,7 +151,7 @@ public class DitherComparator extends Application {
                 chooser.setInitialDirectory(loadedPath.getAbsoluteFile().getParentFile());
             }
             chooser.setTitle("Select file to load");
-            File newFile = chooser.showOpenDialog(openButton.getScene().getWindow());
+            File newFile = chooser.showOpenDialog(controlOpenButton.getScene().getWindow());
             if (newFile != null) {
                 load(newFile);
                 imageView.setImage(imagefx);
@@ -174,7 +170,7 @@ public class DitherComparator extends Application {
             }
         });
 
-        saveButton.setOnAction(new EventHandler<ActionEvent>() {
+        controlSaveButton.setOnAction(new EventHandler<ActionEvent>() {
         @Override
         public void handle(ActionEvent event) {
             try {
@@ -201,7 +197,7 @@ public class DitherComparator extends Application {
                 }
             });
 
-        // vertBox.getChildren().add(openButton);
+        // vertBox.getChildren().add(controlOpenButton);
 
         // vertBox.getChildren().add(dither1Button);
 
@@ -209,8 +205,8 @@ public class DitherComparator extends Application {
         //horizBox.getChildren().add(imageView);
         horizBox.getChildren().add(outputView);
 
-        controlToolbar.getItems().add(openButton);
-        controlToolbar.getItems().add(saveButton);
+        controlToolbar.getItems().add(controlOpenButton);
+        controlToolbar.getItems().add(controlSaveButton);
         functionToolbar.getItems().add(dither1Button);
         functionToolbar.getItems().add(dither2Button);
         functionToolbar.getItems().add(dither3Button);
@@ -228,7 +224,7 @@ public class DitherComparator extends Application {
         masterLayout.add(functionToolbar,0,1);
 
 
-        // root.getChildren().add(openButton);
+        // root.getChildren().add(controlOpenButton);
         scrollPane.setContent(horizBox);
         // border.setTop(controlToolbar);
         // border.setLeft(functionToolbar);
