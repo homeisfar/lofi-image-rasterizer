@@ -14,18 +14,21 @@ public class DitherGrayscale {
     private static BufferedImage output;
     private static int[] imgData; // direct access to underlying bufferedimage data
     private static double[] luminosityMatrixFast; // internal representation for operations.
+    private static double[] cloneMatrix; // MARK
     private static SplittableRandom rand = new SplittableRandom();
+    public static double luminosityScale = 1.0;
 
     private static final int BLACK = 0xFF000000;
     private static final int WHITE = 0xFFFFFFFF;
 
-    public static enum Dither {RANDOM, BAYER2X2, BAYER4X4, BAYER8X8, SIMPLE};
+    public static enum Dither {RANDOM, BAYER2X2, BAYER4X4, BAYER8X8, SIMPLE, FS};
 
     DitherGrayscale (BufferedImage origImage) {
         output = new BufferedImage(origImage.getWidth(),
         origImage.getHeight(), BufferedImage.TYPE_INT_ARGB);
 
         luminosityMatrixFast = new double[origImage.getWidth() * origImage.getHeight()];
+        cloneMatrix = new double[luminosityMatrixFast.length]; //MARK
 
         for (int i = 0; i < origImage.getWidth(); i++) {
             for (int j = 0; j < origImage.getHeight(); j++) {
@@ -40,7 +43,7 @@ public class DitherGrayscale {
         }
         imgData = ((DataBufferInt) output.getRaster().getDataBuffer()).getData();
     }
-    public static double luminosityScale = 1.0;
+
     private static final double[] randomThreshold = { 0.25, 0.26, 0.27, 0.28, 0.29, 0.3, 0.31,
         0.32, 0.33, 0.34, 0.35, 0.36, 0.37, 0.38, 0.39, 0.4, 0.41, 0.42,
         0.43, 0.44, 0.45, 0.46, 0.47, 0.48, 0.49, 0.5, 0.51, 0.52, 0.53,
@@ -101,6 +104,9 @@ public class DitherGrayscale {
                     break;
                 case SIMPLE:
                     simple();
+                    break;
+                case FS:
+                    floydSteinberg();
                     break;
             }
             return output;
@@ -203,6 +209,46 @@ public class DitherGrayscale {
                     ? BLACK : WHITE;
                 }
                 // IntStream.range(0, luminosityMatrixFast.length).parallel().forEach(i -> lumiTest(i, imgData));
+        }
+
+        /* FS
+        for each y from top to bottom
+            for each x from left to right
+                  oldpixel  := pixel[x][y]
+                  newpixel  := find_closest_palette_color(oldpixel)
+                  pixel[x][y]  := newpixel
+                  quant_error  := oldpixel - newpixel
+                  pixel[x + 1][y    ] := pixel[x + 1][y    ] + quant_error * 7 / 16
+                  pixel[x - 1][y + 1] := pixel[x - 1][y + 1] + quant_error * 3 / 16
+                  pixel[x    ][y + 1] := pixel[x    ][y + 1] + quant_error * 5 / 16
+                  pixel[x + 1][y + 1] := pixel[x + 1][y + 1] + quant_error * 1 / 16
+                  */
+
+        private static void floydSteinberg() {
+            System.arraycopy(luminosityMatrixFast, 0, cloneMatrix, 0, luminosityMatrixFast.length);
+            for (int i = 0; i < output.getHeight(); i++) { //MARK
+                for (int j = 0; j < output.getWidth(); j++ ) { //MARK
+                    int index = i * output.getWidth() + j;
+                    double oldPixel =  (cloneMatrix[index]);
+                    imgData[index] = oldPixel * luminosityScale <= 0.5 ? BLACK : WHITE;
+                    double newPixel = imgData[index] == BLACK ? 0 : 1;
+
+                    // imgData[index] = (int) newPixel;
+                    double quantError = oldPixel - newPixel;
+                    quantError = quantError < 0 ? 0
+                               : quantError > 1 ? 1
+                               : quantError;
+
+                    // System.out.println(oldPixel+ " " + newPixel + " " + quantError);
+                    if (j + 1 < output.getWidth()) cloneMatrix[index + 1] += quantError * (7.0 / 16.0);
+                    if (i + 1 == output.getHeight()) continue;
+                    if (j > 0)                     cloneMatrix[index + output.getWidth() - 1] += quantError * (3.0 / 16.0);
+                    /* no if */                    cloneMatrix[index + output.getWidth()    ] += quantError * (5.0 / 16.0);
+                    if (j + 1 < output.getWidth()) cloneMatrix[index + output.getWidth() + 1] += quantError * (7.0 / 16.0);
+                }
+                // System.out.println();
+            }
+
         }
 
         // private static final void lumiTest(int i, int[] imgData) {

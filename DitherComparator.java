@@ -96,6 +96,7 @@ public class DitherComparator extends Application {
     }
 
     private void createDitherButton(Button b, DitherGrayscale.Dither d) {
+        b.setId(b.getText());
         b.setOnAction(new ditherButtonHandler(b));
         functions.put(b, d);
         functionToolbar.getItems().add(b);
@@ -116,6 +117,7 @@ public class DitherComparator extends Application {
         createDitherButton(new Button("Bayer 4x4"), DitherGrayscale.Dither.BAYER4X4);
         createDitherButton(new Button("Bayer 8x8"), DitherGrayscale.Dither.BAYER8X8);
         createDitherButton(new Button("Simple"), DitherGrayscale.Dither.SIMPLE);
+        createDitherButton(new Button("FloydStein"), DitherGrayscale.Dither.FS);
 
         controlOpenButton.setText("Open Image");
         controlSaveButton.setText("Save Image");
@@ -128,6 +130,9 @@ public class DitherComparator extends Application {
         outputView.setSmooth(false);
 
         controlOpenButton.setOnAction(new EventHandler<ActionEvent>() {
+
+        /////////////////////////////////
+        // Control Handlers
 
         // Open Dialog and set preview
         @Override
@@ -146,6 +151,23 @@ public class DitherComparator extends Application {
         }
     });
 
+    //Save button handler
+    controlSaveButton.setOnAction(new EventHandler<ActionEvent>() {
+    @Override
+    public void handle(ActionEvent event) {
+        try {
+            ImageIO.write(output, "PNG", new File("output.png"));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    });
+
+
+    ///////////////////////////
+    // Function handlers
+
+        // Slider handler
     luminositySlider.valueProperty().addListener(new ChangeListener<Number>() {
             @Override
             public void changed(ObservableValue<? extends Number> ov,
@@ -156,16 +178,7 @@ public class DitherComparator extends Application {
             }
         });
 
-        controlSaveButton.setOnAction(new EventHandler<ActionEvent>() {
-        @Override
-        public void handle(ActionEvent event) {
-            try {
-                ImageIO.write(output, "PNG", new File("output.png"));
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-    });
+
 
     // Lambda function doesn't need to check for bounds, because the slider itself is bounded.
     // Textfield coupled to slider.
