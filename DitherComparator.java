@@ -55,7 +55,7 @@ public class DitherComparator extends Application {
     private ToolBar controlToolbar = new ToolBar();
     private ToolBar functionToolbar = new ToolBar();
 
-    private Map<String, DitherGrayscale.Dither> functions = new HashMap<String, DitherGrayscale.Dither>();
+    private Map<Button, DitherGrayscale.Dither> functions = new HashMap<Button, DitherGrayscale.Dither>();
 
     // custom handler for multiple dither buttons
     class ditherButtonHandler implements EventHandler<ActionEvent> {
@@ -95,44 +95,30 @@ public class DitherComparator extends Application {
         }
     }
 
+    private void createDitherButton(Button b, DitherGrayscale.Dither d) {
+        b.setOnAction(new ditherButtonHandler(b));
+        functions.put(b, d);
+        functionToolbar.getItems().add(b);
+    }
+
     @Override
     public void start(Stage primaryStage) {
-
+        ScrollPane scrollPane = new ScrollPane();
         functionToolbar.setOrientation(Orientation.VERTICAL);
         Button controlOpenButton = new Button();
-        Button dither1Button = new Button();
-        Button dither2Button = new Button();
-        Button dither3Button = new Button();
-        Button dither4Button = new Button();
-        Button dither5Button = new Button();
         Button controlSaveButton = new Button();
-        ScrollPane scrollPane = new ScrollPane();
         Slider luminositySlider = new Slider(0, 3, 1.0);
-        final TextField luminosityTextField = new TextField (Double.toString(luminositySlider.getValue()));
         luminositySlider.setShowTickMarks(true);
+        TextField luminosityTextField = new TextField (Double.toString(luminositySlider.getValue()));
+
+        createDitherButton(new Button("Random"), DitherGrayscale.Dither.RANDOM);
+        createDitherButton(new Button("Bayer 2x2"), DitherGrayscale.Dither.BAYER2X2);
+        createDitherButton(new Button("Bayer 4x4"), DitherGrayscale.Dither.BAYER4X4);
+        createDitherButton(new Button("Bayer 8x8"), DitherGrayscale.Dither.BAYER8X8);
+        createDitherButton(new Button("Simple"), DitherGrayscale.Dither.SIMPLE);
 
         controlOpenButton.setText("Open Image");
-        dither1Button.setText(RANDOM_THRESHOLD_DITHER);
-        dither2Button.setText(BAYER2X2_DITHER);
-        dither3Button.setText(SIMPLE_DITHER); //MARK
-        dither4Button.setText(BAYER4X4_DITHER);
-        dither5Button.setText(BAYER8X8_DITHER);
         controlSaveButton.setText("Save Image");
-
-        dither1Button.setOnAction(new ditherButtonHandler(dither1Button));
-        dither2Button.setOnAction(new ditherButtonHandler(dither2Button));
-        dither3Button.setOnAction(new ditherButtonHandler(dither3Button));
-        dither4Button.setOnAction(new ditherButtonHandler(dither4Button));
-        dither5Button.setOnAction(new ditherButtonHandler(dither5Button));
-
-         //MARK
-        functions.put(dither1Button, DitherGrayscale.Dither.RANDOM);
-        functions.put(Dither2Button, DitherGrayscale.Dither.BAYER2X2);
-        functions.put(Dither3Button, DitherGrayscale.Dither.BAYER4X4);
-        functions.put(Dither4Button, DitherGrayscale.Dither.BAYER8X8);
-        functions.put(Dither5Button, DitherGrayscale.Dither.SIMPLE);
-
-
 
         imageView.setFitWidth(200);
         imageView.setPreserveRatio(true);
@@ -197,47 +183,24 @@ public class DitherComparator extends Application {
                 }
             });
 
-        // vertBox.getChildren().add(controlOpenButton);
-
-        // vertBox.getChildren().add(dither1Button);
 
         horizBox.getChildren().add(vertBox);
-        //horizBox.getChildren().add(imageView);
         horizBox.getChildren().add(outputView);
 
         controlToolbar.getItems().add(controlOpenButton);
         controlToolbar.getItems().add(controlSaveButton);
-        functionToolbar.getItems().add(dither1Button);
-        functionToolbar.getItems().add(dither2Button);
-        functionToolbar.getItems().add(dither3Button);
-        functionToolbar.getItems().add(dither4Button);
-        functionToolbar.getItems().add(dither5Button);
         functionToolbar.getItems().add(luminositySlider);
         functionToolbar.getItems().add(luminosityTextField);
         functionToolbar.getItems().add(imageView);
 
-
-        StackPane root = new StackPane();
-        // BorderPane border = new BorderPane();
         GridPane masterLayout = new GridPane();
         masterLayout.add(controlToolbar,1,0);
         masterLayout.add(functionToolbar,0,1);
 
-
-        // root.getChildren().add(controlOpenButton);
         scrollPane.setContent(horizBox);
-        // border.setTop(controlToolbar);
-        // border.setLeft(functionToolbar);
-        root.getChildren().add(scrollPane);
-
-
         masterLayout.add(scrollPane,1,1);
-        // layoutBox.getChildren().add(border);
-        // layoutBox.getChildren().add(root);
 
-        // root.getChildren().add(imageView);
-
-    Scene scene = new Scene(masterLayout, 900, 600);
+        Scene scene = new Scene(masterLayout, 900, 600);
 
         primaryStage.setTitle("Dither Comparator");
         primaryStage.setScene(scene);
