@@ -6,20 +6,68 @@ import java.awt.image.DataBufferInt;
 import java.util.Arrays;
 import java.util.stream.IntStream;
 import java.util.SplittableRandom;
+import java.lang.Byte;
 
 import javax.imageio.ImageIO;
+
 
 public class DitherGrayscale {
 
     private static BufferedImage output;
     private static int[] imgData; // direct access to underlying bufferedimage data
     private static double[] luminosityMatrixFast; // internal representation for operations.
-    private static double[] cloneMatrix;    // Copy for non-destructive error-diffusion. Probably can refactor out. //MARK
+    // private static double[] cloneMatrix;    // Copy for non-destructive error-diffusion. Probably can refactor out. //MARK
+    private static int[] cloneMatrix;
+    private static int[] reds;
+    private static int[] greens;
+    private static int[] blues;
+
+    private static int[] redsMutate;
+    private static int[] greensMutate;
+    private static int[] bluesMutate;
+
     private static SplittableRandom rand = new SplittableRandom();
     public static double luminosityScale = 1.0;
 
     private static final int BLACK = 0xFF000000;
     private static final int WHITE = 0xFFFFFFFF;
+
+    static RGB[] palette = new RGB[]{
+        new RGB(  0,   0,   0), // black
+        new RGB(104, 104, 104), // gray
+        new RGB(  0,  35, 174), // dark blue
+        new RGB( 95, 114, 243), // light blue
+        new RGB(  0, 179,  63), // green
+        new RGB(  0, 250, 131), // light green
+        new RGB(  0, 182, 183), // teal
+        new RGB(  0, 253, 253), // cyan
+        new RGB(200,  27,  24), // red
+        new RGB(255, 111, 110), // light red
+        new RGB(197,  46, 175), // magenta
+        new RGB(255, 120, 245), // pink
+        new RGB(196, 105,  43), // brown
+        new RGB(255, 252, 135), // yellow
+        new RGB(184, 184, 184), // light gray
+        new RGB(255, 255, 255) // white
+    };
+    /*
+    black 0, 0, 0
+    gray 104, 104, 104
+    dark blue 0, 35, 174
+    light blue 95,114, 243
+    green 0, 179, 63
+    light green 0, 250, 131
+    teal 0, 182, 183
+    cyan 0, 253, 253
+    red 200, 27, 24
+    light red 255, 111, 110
+    magenta 197, 46 , 175
+    pink 255, 120, 245
+    brown 196, 105, 43
+    yellow 255, 252 135
+    light gray 184 184 184
+    white 255 255 255
+    */
 
     public static enum Dither {RANDOM, BAYER2X2, BAYER4X4, BAYER8X8, SIMPLE, FS};
 
@@ -28,17 +76,32 @@ public class DitherGrayscale {
         origImage.getHeight(), BufferedImage.TYPE_INT_ARGB);
 
         luminosityMatrixFast = new double[origImage.getWidth() * origImage.getHeight()];
-        cloneMatrix = new double[luminosityMatrixFast.length];
+        cloneMatrix = new int[luminosityMatrixFast.length];
+
+        reds = new int[luminosityMatrixFast.length];
+        greens = new int[luminosityMatrixFast.length];
+        blues = new int[luminosityMatrixFast.length];
+
+        redsMutate = new int[luminosityMatrixFast.length];
+        greensMutate = new int[luminosityMatrixFast.length];
+        bluesMutate = new int[luminosityMatrixFast.length];
 
         for (int i = 0; i < origImage.getWidth(); i++) {
             for (int j = 0; j < origImage.getHeight(); j++) {
-
+                int index = i + output.getWidth() * j;
                 int color = origImage.getRGB(i, j);
 
                 int red = (color >>> 16) & 0xFF;
                 int green = (color >>> 8) & 0xFF;
                 int blue = (color >>> 0) & 0xFF;
-                luminosityMatrixFast[i + output.getWidth() * j] = (red * 0.21f + green * 0.71f + blue * 0.07f) / 255;
+                reds[index] =  (int) red;
+                greens[index] = (int) green;
+                blues[index] = (int) blue;
+                redsMutate[index] =  (int) red;
+                greensMutate[index] = (int) green;
+                bluesMutate[index] = (int) blue;
+                luminosityMatrixFast[index] = (red * 0.21f + green * 0.71f + blue * 0.07f) / 256;
+                cloneMatrix[index] = color;
             }
         }
         imgData = ((DataBufferInt) output.getRaster().getDataBuffer()).getData();
@@ -214,22 +277,17 @@ public class DitherGrayscale {
                 case BAYER2X2:
                     bayer = bayer2x2;
                     bayerLength = 2;
-                    System.out.print(" "+ i );
                     bayerVerticalOffset = (row % 2);
-                    // System.out.print(" "+bayerVerticalOffset);
-                    // System.out.println("2x2");
                     break;
                 case BAYER4X4:
                     bayer = bayer4x4;
                     bayerLength = 4;
                     bayerVerticalOffset = (row % 4) << 2;
-                    // System.out.println("4x4");
                     break;
                 case BAYER8X8:
                     bayer = bayer8x8;
                     bayerLength = 8;
                     bayerVerticalOffset = (row % 8) << 3;
-                    // System.out.println("8x8");
                     break;
                 default:
                     bayer = null;
@@ -245,14 +303,18 @@ public class DitherGrayscale {
                     bayerHorizontalOffset = 0;
                     imgData[c] = luminosityMatrixFast[c] * luminosityScale <= bayer[bayerHorizontalOffset + bayerVerticalOffset]
                 ? BLACK : WHITE;
+                // imgData[c] = findClosestColorFromPalette(reds[c] + (int) (palette.length * (bayer[bayerHorizontalOffset + bayerVerticalOffset] - .5)),
+                                                    //    greens[c] + (int) (palette.length * (bayer[bayerHorizontalOffset + bayerVerticalOffset] - .5)),
+                                                        // blues[c] + (int) (palette.length * (bayer[bayerHorizontalOffset + bayerVerticalOffset] - .5)));
             }
         }
 
         private static final void parallelRandomDither(int i) {
-            SplittableRandom newRand = rand.split(); // unnecessary
+            SplittableRandom newRand = rand.split(); // unnecessary?
             for (int c = i; c < i + output.getWidth(); c++) {
                 imgData[c] = luminosityMatrixFast[c] * luminosityScale <= randomThreshold[newRand.nextInt(randomThreshold.length)]
                 ? BLACK : WHITE;
+                // imgData[c] = findClosestColorFromPalette(cloneMatrix[c]);
             }
         }
 
@@ -275,6 +337,16 @@ public class DitherGrayscale {
                 IntStream.range(0, output.getHeight()).parallel().forEach(i -> parallelOrderedDither(i, i * output.getWidth(), Dither.SIMPLE));
         }
 
+        private static final void simple2TEST() {
+            for (int r = 0; r < output.getHeight(); r++) {
+                int index = r * output.getWidth();
+                for (int c = 0; c < output.getWidth(); c++) {
+                    imgData[index] = findClosestColorFromPalette(reds[index], greens[index], blues[index]);
+                    index++;
+                }
+            }
+        }
+
         // private static final void lumiTest(int i) {
         //     for (int c = i; c < i + output.getWidth(); c++) {
         //             imgData[c] = luminosityMatrixFast[c] * luminosityScale <= 0.5
@@ -282,6 +354,131 @@ public class DitherGrayscale {
         //     }
         // }
 
+
+        // private static void floydSteinberg() {
+        //     System.arraycopy(luminosityMatrixFast, 0, cloneMatrix, 0, luminosityMatrixFast.length);
+        //     for (int i = 0; i < output.getHeight(); i++) {
+        //         for (int j = 0; j < output.getWidth(); j++ ) {
+        //             int index = i * output.getWidth() + j;
+        //             double oldPixel =  (cloneMatrix[index]);
+        //             imgData[index] = oldPixel * luminosityScale <= 0.5 ? BLACK : WHITE;
+        //             double newPixel = imgData[index] == BLACK ? 0 : 1;
+        //
+        //             // imgData[index] = (int) newPixel;
+        //             double quantError = oldPixel - newPixel;
+        //             quantError = quantError < 0 ? 0
+        //                        : quantError > 1 ? 1
+        //                        : quantError;
+        //
+        //             // System.out.println(oldPixel+ " " + newPixel + " " + quantError);
+        //             if (j + 1 < output.getWidth()) cloneMatrix[index + 1] += quantError * (7.0 / 16.0);
+        //             if (i + 1 == output.getHeight()) continue;
+        //             if (j > 0)                     cloneMatrix[index + output.getWidth() - 1] += quantError * (3.0 / 16.0);
+        //             /* no if */                    cloneMatrix[index + output.getWidth()    ] += quantError * (5.0 / 16.0);
+        //             if (j + 1 < output.getWidth()) cloneMatrix[index + output.getWidth() + 1] += quantError * (7.0 / 16.0);
+        //         }
+        //     }
+        // }
+
+
+
+        private static void floydSteinberg2() {
+
+            int[] errorArrayR = new int[output.getWidth() + 1];
+            int[] errorArrayG = new int[output.getWidth() + 1];
+            int[] errorArrayB = new int[output.getWidth() + 1];
+
+            for (int i = 0; i < output.getHeight(); i++) {
+                int index = i * output.getWidth();
+                for (int j = 0; j < output.getWidth() - 1; j++ ) {
+                     // i * output could be moved to outer loop
+
+                    int r1 = (0x000000FF & reds[index]) + errorArrayR[j + 1];
+                    int g1 = (0x000000FF & greens[index]) + errorArrayG[j + 1];
+                    int b1 = (0x000000FF & blues[index]) + errorArrayB[j + 1];
+
+                    r1 *= luminosityScale;
+                    g1 *= luminosityScale;
+                    b1 *= luminosityScale;
+
+                    // System.out.println(r1 +" "+g1 + " "+b1 );
+
+                    // int oldPixel = r1;
+                    // oldPixel = oldPixel << 8;
+                    // oldPixel += g1;
+                    // oldPixel = oldPixel << 8;
+                    // oldPixel += b1;
+
+                    int r2 = 0;
+                    int g2 = 0;
+                    int b2 = 0;
+
+                    int newPixel = BLACK;
+                    if (r1 > 0x7F && g1 > 0x7F && b1 > 0x7F) {
+                        newPixel = WHITE;
+                    }
+
+                    if (newPixel == WHITE) {
+                        r2 = 0xFF;
+                        g2 = 0xFF;
+                        b2 = 0xFF;
+                    }
+
+                    int quantErrorR = r1 - r2;
+                    int quantErrorG = g1 - g2;
+                    int quantErrorB = b1 - b2;
+
+                    // quantErrorR = quantErrorR < 0 ? 0
+                    //             : quantErrorR > 0xFF ? 0xFF
+                    //             : quantErrorR;
+                    //
+                    // quantErrorG = quantErrorG < 0 ? 0
+                    //             : quantErrorG > 0xFF ? 0xFF
+                    //             : quantErrorG;
+                    //
+                    // quantErrorB = quantErrorB < 0 ? 0
+                    //             : quantErrorB > 0xFF ? 0xFF
+                    //             : quantErrorB;
+
+
+                    imgData[index] = newPixel;// | 0xFF000000;
+
+                    //TODO CONVERT THIS TO RGB COMPARE EACH RGB
+
+
+                    // if (i + 1 == output.getHeight()) continue;
+
+                    // r  * 0.4375  7/16
+                    // ll * 0.1875  3/16
+                    // l  * 0.3125  5/16
+                    // lr * 0.0625  1/16
+
+                    // lower left pixel
+                if (j != 0) {
+                    errorArrayR[j - 1] += quantErrorR * 3 / 16;
+                    errorArrayG[j - 1] += quantErrorG * 3 / 16;
+                    errorArrayB[j - 1] += quantErrorB * 3 / 16;
+                }
+
+                // below
+                    errorArrayR[j] += quantErrorR * 5 / 16;
+                    errorArrayG[j] += quantErrorG * 5 / 16;
+                    errorArrayB[j] += quantErrorB * 5 / 16;
+
+                // lower right
+                    errorArrayR[j + 1] = quantErrorR * 1 / 16;
+                    errorArrayG[j + 1] = quantErrorG * 1 / 16;
+                    errorArrayB[j + 1] = quantErrorB * 1 / 16;
+
+                // right
+                    errorArrayR[j + 2] += quantErrorR * 7 / 16;
+                    errorArrayG[j + 2] += quantErrorG * 7 / 16;
+                    errorArrayB[j + 2] += quantErrorB * 7 / 16;
+
+                    index ++;
+                }
+            }
+        }
         /* FS
         for each y from top to bottom
             for each x from left to right
@@ -294,29 +491,145 @@ public class DitherGrayscale {
                   pixel[x    ][y + 1] := pixel[x    ][y + 1] + quant_error * 5 / 16
                   pixel[x + 1][y + 1] := pixel[x + 1][y + 1] + quant_error * 1 / 16
                   */
-
         private static void floydSteinberg() {
-            System.arraycopy(luminosityMatrixFast, 0, cloneMatrix, 0, luminosityMatrixFast.length);
-            for (int i = 0; i < output.getHeight(); i++) {
-                for (int j = 0; j < output.getWidth(); j++ ) {
-                    int index = i * output.getWidth() + j;
-                    double oldPixel =  (cloneMatrix[index]);
-                    imgData[index] = oldPixel * luminosityScale <= 0.5 ? BLACK : WHITE;
-                    double newPixel = imgData[index] == BLACK ? 0 : 1;
+            // System.arraycopy(reds, 0, redsMutate, 0, reds.length);
+            // System.arraycopy(greens, 0, greensMutate, 0, reds.length); // 3 LOOPS TO DO THE JOB OF ONE??????? NANI!!!??
+            // System.arraycopy(blues, 0, bluesMutate, 0, reds.length);
 
-                    // imgData[index] = (int) newPixel;
-                    double quantError = oldPixel - newPixel;
-                    quantError = quantError < 0 ? 0
-                               : quantError > 1 ? 1
-                               : quantError;
+            for (int i = 0; i < reds.length; i++) {
+                redsMutate[i] = reds[i];
+                greensMutate[i] = greens[i];
+                bluesMutate[i] = blues[i];
+            }
 
-                    // System.out.println(oldPixel+ " " + newPixel + " " + quantError);
-                    if (j + 1 < output.getWidth()) cloneMatrix[index + 1] += quantError * (7.0 / 16.0);
-                    if (i + 1 == output.getHeight()) continue;
-                    if (j > 0)                     cloneMatrix[index + output.getWidth() - 1] += quantError * (3.0 / 16.0);
-                    /* no if */                    cloneMatrix[index + output.getWidth()    ] += quantError * (5.0 / 16.0);
-                    if (j + 1 < output.getWidth()) cloneMatrix[index + output.getWidth() + 1] += quantError * (7.0 / 16.0);
+            for (int r = 0; r < output.getHeight(); r++) {
+                int index = r * output.getWidth();
+                for (int c = 0; c < output.getWidth(); c++) {
+                    int r1 = redsMutate[index];
+                    int g1 = greensMutate[index];
+                    int b1 = bluesMutate[index];
+
+                    int newPixel = findClosestColorFromPalette(r1, g1, b1);
+                    imgData[index] = newPixel;
+
+                    int r2 = (newPixel >>> 16) & 0xFF;
+                    int g2 = (newPixel >>> 8) & 0xFF;
+                    int b2 = (newPixel >>> 0) & 0xFF;
+
+                    int quantErrorR = r1 - r2;
+                    int quantErrorG = g1 - g2;
+                    int quantErrorB = b1 - b2;
+
+
+                    if (c + 1 < output.getWidth()) {
+                        redsMutate[index + 1] += quantErrorR * (7./16);
+                        greensMutate[index + 1] += quantErrorG * (7./16);
+                        bluesMutate[index + 1] += quantErrorB * (7./16);
+                    }
+                    if (r + 1 == output.getHeight()) continue;
+
+                    if (c > 0) {
+                        redsMutate[index + output.getWidth() - 1] += quantErrorR * (3./16);
+                        greensMutate[index + output.getWidth() - 1] += quantErrorG * (3./16);
+                        bluesMutate[index + output.getWidth() - 1] += quantErrorB * (3./16);
+                    }
+                    /* no if */
+                        redsMutate[index + output.getWidth()    ] += quantErrorR * (5./16);
+                        greensMutate[index + output.getWidth()    ] += quantErrorG * (5./16);
+                        bluesMutate[index + output.getWidth()    ] += quantErrorB * (5./16);
+
+                    if (c + 1 < output.getWidth()) {
+                        redsMutate[index + output.getWidth() + 1] += quantErrorR * (1./16);
+                        greensMutate[index + output.getWidth() + 1] += quantErrorG * (1./16);
+                        bluesMutate[index + output.getWidth() + 1] += quantErrorB * (1./16);
+                    }
+                    index++;
                 }
             }
         }
+
+        private static int findClosestColorFromPalette(int r, int g, int b) {
+            RGB rgb = new RGB(r,g,b);
+
+            /*int newPixel = BLACK;
+            r *= luminosityScale;
+            g *= luminosityScale;
+            b *= luminosityScale;
+            // Random rand = new Random();
+            // int compareval = rand.nextInt((137 - 117) + 1) + 117;
+            if (r > 0x7F && g > 0x7F && b > 0x7F) {
+                newPixel = WHITE;
+            } */
+
+            RGB nearest = palette[0];
+
+            for (RGB n : palette) {
+                if (n.diff(rgb) < nearest.diff(rgb)) {
+                    nearest = n;
+                }
+            }
+            return nearest.toInt(nearest);
+        }
+
+        private static int findClosestColorFromPalette(int c) {
+            RGB rgb = new RGB(c);
+
+            /*int newPixel = BLACK;
+            r *= luminosityScale;
+            g *= luminosityScale;
+            b *= luminosityScale;
+            // Random rand = new Random();
+            // int compareval = rand.nextInt((137 - 117) + 1) + 117;
+            if (r > 0x7F && g > 0x7F && b > 0x7F) {
+                newPixel = WHITE;
+            } */
+
+            RGB nearest = palette[0];
+
+            for (RGB n : palette) {
+                if (n.diff(rgb) < nearest.diff(rgb)) {
+                    nearest = n;
+                }
+            }
+            return nearest.toInt(nearest);
+        }
     }
+
+class RGB {
+    int r, g, b;
+    public RGB(int color) {
+        this.r = (color >>> 16) & 0xFF;
+        this.g = (color >>> 8) & 0xFF;
+        this.b = (color >>> 0) & 0xFF;
+    }
+    public RGB (int r, int g, int b) {
+        this.r = r;
+        this.g = g;
+        this.b = b;
+    }
+
+    public int toInt(RGB o) {
+        int color = clamp(r);
+        color = color << 8;
+        color += clamp(g);
+        color = color << 8;
+        color += clamp(b);
+        return 0xFF000000 | color;
+    }
+
+    public int diff(RGB o) {
+
+        int dist_r = Math.abs(r - o.r);
+        int dist_g = Math.abs(g - o.g);
+        int dist_b = Math.abs(b - o.b);
+
+        // 3d distance formula for better accuracy. Only care about magnitude.
+        int sq_distance = (dist_r * dist_r) + (dist_g * dist_g) + (dist_b * dist_b);
+        // return Math.abs(r - o.r) +  Math.abs(g - o.g) +  Math.abs(b - o.b);
+        return sq_distance;
+    }
+
+    private int clamp(int c) {
+        return Math.max(0, Math.min(255, c));
+    }
+}

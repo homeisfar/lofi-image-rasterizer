@@ -24,15 +24,20 @@ import javafx.scene.layout.VBox;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.geometry.Orientation;
 
-
 import java.io.IOException;
 import java.awt.image.BufferedImage;
 import javax.imageio.ImageIO;
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Logger;
+import java.util.logging.FileHandler;
+import java.util.logging.Level;
+import java.util.logging.SimpleFormatter;
 
 public class DitherComparator extends Application {
+    private static final Logger LOGGER = Logger.getLogger( DitherComparator.class.getName() );
+    private static FileHandler fh = null; //MARK
 
     public static final String RANDOM_THRESHOLD_DITHER = "Random Threshold";
     public static final String BAYER2X2_DITHER = "Ordered 2x2";
@@ -54,6 +59,7 @@ public class DitherComparator extends Application {
     private Button lastButtonPressed;
     private ToolBar controlToolbar = new ToolBar();
     private ToolBar functionToolbar = new ToolBar();
+    private Label controlPixelLabel = new Label();
 
     private Map<Button, DitherGrayscale.Dither> functions = new HashMap<Button, DitherGrayscale.Dither>();
 
@@ -80,6 +86,7 @@ public class DitherComparator extends Application {
                 output = DitherGrayscale.dispatchDithering(functions.get(button)); //MARK
                 long endTime = System.nanoTime();
                 long timed = (endTime - startTime) / 1000000;
+                LOGGER.log(Level.CONFIG, "Hey baby");
                 System.out.println("algorithm time: " + timed);
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -105,10 +112,16 @@ public class DitherComparator extends Application {
     @Override
     public void start(Stage primaryStage) {
         ScrollPane scrollPane = new ScrollPane();
+        scrollPane.setPannable(true);
+        // scrollPane.setFitToHeight(true);
+        // scrollPane.setFitToWidth(true);
         functionToolbar.setOrientation(Orientation.VERTICAL);
         Button controlOpenButton = new Button("Open Image");
         Button controlSaveButton = new Button("Save Image");
         Button controlBayerButton = new Button("Modify Bayer");
+        Button controlZoomInButton = new Button(" + ");
+        Button controlZoomOutButton = new Button(" - ");
+        Button controlZoomResetButton = new Button(" = ");
         Slider luminositySlider = new Slider(0, 3, 1.0);
         luminositySlider.setShowTickMarks(true);
         TextField luminosityTextField = new TextField (Double.toString(luminositySlider.getValue()));
@@ -143,7 +156,7 @@ public class DitherComparator extends Application {
             if (loadedPath != null) {
                 chooser.setInitialDirectory(loadedPath.getAbsoluteFile().getParentFile());
             }
-            chooser.setTitle("Select file to load");
+            chooser.setTitle("Select image to load");
             File newFile = chooser.showOpenDialog(controlOpenButton.getScene().getWindow());
             if (newFile != null) {
                 load(newFile);
@@ -171,6 +184,44 @@ public class DitherComparator extends Application {
     public void handle(ActionEvent event) {
 
     }
+    });
+
+    controlZoomInButton.setOnAction(new EventHandler<ActionEvent>() {
+        @Override
+        public void handle(ActionEvent event) {
+            outputView.setScaleX(outputView.getScaleX() * 2.);
+            outputView.setScaleY(outputView.getScaleY() * 2.);
+            // outputView.setTranslateX(outputView.getTranslateX());
+            // outputView.setTranslateY(outputView.getTranslateY());
+            // scrollPane.setScaleX(scrollPane.getScaleX() * 2.);
+            // scrollPane.setScaleY(scrollPane.getScaleY() * 2.);
+            // scrollPane.setTranslateX(200 );
+            // scrollPane.setTranslateY(200 );
+        }
+    });
+
+    controlZoomOutButton.setOnAction(new EventHandler<ActionEvent>() {
+        @Override
+        public void handle(ActionEvent event) {
+            outputView.setScaleX(outputView.getScaleX() / 2.);
+            outputView.setScaleY(outputView.getScaleY() / 2.);
+            // horizBox.setScaleX(horizBox.getScaleX() / 2.);
+            // horizBox.setScaleY(horizBox.getScaleY() / 2.);
+            // outputView.setTranslateX(0 + outputView.getScene().getWidth()/4);
+            // outputView.setTranslateY(0 + outputView.getScene().getHeight()/4);
+        }
+    });
+
+    controlZoomResetButton.setOnAction(new EventHandler<ActionEvent>() {
+        @Override
+        public void handle(ActionEvent event) {
+            outputView.setScaleX(1.);
+            outputView.setScaleY(1.);
+            // horizBox.setScaleX(1.);
+            // horizBox.setScaleY(1.);
+            outputView.setTranslateX(0);
+            outputView.setTranslateY(0);
+        }
     });
 
 
@@ -214,6 +265,11 @@ public class DitherComparator extends Application {
         controlToolbar.getItems().add(controlOpenButton);
         controlToolbar.getItems().add(controlSaveButton);
         controlToolbar.getItems().add(controlBayerButton);
+        controlToolbar.getItems().add(controlZoomOutButton);
+        controlToolbar.getItems().add(controlZoomInButton);
+        controlToolbar.getItems().add(controlZoomResetButton);
+        controlToolbar.getItems().add(controlPixelLabel);
+
         functionToolbar.getItems().add(luminositySlider);
         functionToolbar.getItems().add(luminosityTextField);
         functionToolbar.getItems().add(imageView);
@@ -240,9 +296,16 @@ public class DitherComparator extends Application {
             outputWritableImage = new WritableImage(original.getWidth(), original.getHeight());
             outputView.setImage(outputWritableImage);
             imagefx = SwingFXUtils.toFXImage(original, null);
+            // fh=new FileHandler("loggerExample.log", false); //file.getName(); //MARK
+            // Logger l = Logger.getLogger("");
+            // fh.setFormatter(new SimpleFormatter());
+            // l.addHandler(fh);
+		    // l.setLevel(Level.CONFIG);
+            controlPixelLabel.setText("W: " + original.getWidth() + " H: " + original.getHeight());
         } catch (IOException ex) {
             ex.printStackTrace();
         }
+
     }
  public static void main(String[] args) {
         launch(args);
