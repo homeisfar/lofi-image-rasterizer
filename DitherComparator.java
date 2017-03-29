@@ -10,6 +10,7 @@ import javafx.scene.control.Slider;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
+import javafx.scene.control.CheckBox;
 import javafx.scene.image.ImageView;
 import javafx.scene.image.Image;
 import javafx.scene.image.WritableImage;
@@ -23,6 +24,7 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.geometry.Orientation;
+
 
 import java.io.IOException;
 import java.awt.image.BufferedImage;
@@ -60,8 +62,10 @@ public class DitherComparator extends Application {
     private ToolBar controlToolbar = new ToolBar();
     private ToolBar functionToolbar = new ToolBar();
     private Label controlPixelLabel = new Label();
+    private CheckBox controlBWBox = new CheckBox("Black & White");
+    private ImageData loadedImage;
 
-    private Map<Button, DitherGrayscale.Dither> functions = new HashMap<Button, DitherGrayscale.Dither>();
+    private Map<Button, Ditherable.Dither> functions = new HashMap<Button, Ditherable.Dither>();
 
     // custom handler for multiple dither buttons
     class ditherButtonHandler implements EventHandler<ActionEvent> {
@@ -83,16 +87,22 @@ public class DitherComparator extends Application {
                 //(1)output = (BufferedImage) DitherGrayscale.class.
                 //(2)getDeclaredMethod(functions.get(buttonString), BufferedImage.class).invoke(null, original);
                 //(1)getDeclaredMethod(functions.get(buttonString)).invoke(null);
-                output = DitherGrayscale.dispatchDithering(functions.get(button)); //MARK
+                if (controlBWBox.isSelected()) {
+                    DitherGrayscale.dispatchDithering(loadedImage, functions.get(button));
+                } else {
+                    DitherColor.dispatchDithering(loadedImage, functions.get(button));
+                }
+
+                // output = DitherGrayscale.dispatchDithering(functions.get(button)); //MARK
                 long endTime = System.nanoTime();
                 long timed = (endTime - startTime) / 1000000;
-                LOGGER.log(Level.CONFIG, "Hey baby");
+                LOGGER.log(Level.CONFIG, "DoingWork");
                 System.out.println("algorithm time: " + timed);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
                 long startTime = System.nanoTime();
-                SwingFXUtils.toFXImage(output, outputWritableImage);
+                SwingFXUtils.toFXImage(loadedImage.output, outputWritableImage);
 
                 long endTime = System.nanoTime();
                 long timed = (endTime - startTime) / 1000000;
@@ -102,7 +112,7 @@ public class DitherComparator extends Application {
         }
     }
 
-    private void createDitherButton(Button b, DitherGrayscale.Dither d) {
+    private void createDitherButton(Button b, Ditherable.Dither d) {
         b.setId(b.getText());
         b.setOnAction(new ditherButtonHandler(b));
         functions.put(b, d);
@@ -126,12 +136,12 @@ public class DitherComparator extends Application {
         luminositySlider.setShowTickMarks(true);
         TextField luminosityTextField = new TextField (Double.toString(luminositySlider.getValue()));
 
-        createDitherButton(new Button("Random"), DitherGrayscale.Dither.RANDOM);
-        createDitherButton(new Button("Bayer 2x2"), DitherGrayscale.Dither.BAYER2X2);
-        createDitherButton(new Button("Bayer 4x4"), DitherGrayscale.Dither.BAYER4X4);
-        createDitherButton(new Button("Bayer 8x8"), DitherGrayscale.Dither.BAYER8X8);
-        createDitherButton(new Button("Simple"), DitherGrayscale.Dither.SIMPLE);
-        createDitherButton(new Button("FloydStein"), DitherGrayscale.Dither.FS);
+        createDitherButton(new Button("Random"), Ditherable.Dither.RANDOM);
+        createDitherButton(new Button("Bayer 2x2"), Ditherable.Dither.BAYER2X2);
+        createDitherButton(new Button("Bayer 4x4"), Ditherable.Dither.BAYER4X4);
+        createDitherButton(new Button("Bayer 8x8"), Ditherable.Dither.BAYER8X8);
+        createDitherButton(new Button("Simple"), Ditherable.Dither.SIMPLE);
+        createDitherButton(new Button("FloydStein"), Ditherable.Dither.FS);
 
         // controlOpenButton.setText("Open Image");
         // controlSaveButton.setText("Save Image");
@@ -171,7 +181,7 @@ public class DitherComparator extends Application {
     @Override
     public void handle(ActionEvent event) {
         try {
-            ImageIO.write(output, "PNG", new File("output.png"));
+            ImageIO.write(loadedImage.output, "PNG", new File("output.png"));
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -234,7 +244,7 @@ public class DitherComparator extends Application {
             @Override
             public void changed(ObservableValue<? extends Number> ov,
                 Number old_val, Number new_val) {
-                    DitherGrayscale.luminosityScale = new_val.doubleValue();
+                    loadedImage.luminosityScale = new_val.doubleValue();
                     luminosityTextField.setText(String.format("%.3f", new_val));
                     lastButtonPressed.fire();
             }
@@ -269,6 +279,7 @@ public class DitherComparator extends Application {
         controlToolbar.getItems().add(controlZoomInButton);
         controlToolbar.getItems().add(controlZoomResetButton);
         controlToolbar.getItems().add(controlPixelLabel);
+        controlToolbar.getItems().add(controlBWBox);
 
         functionToolbar.getItems().add(luminositySlider);
         functionToolbar.getItems().add(luminosityTextField);
@@ -292,7 +303,8 @@ public class DitherComparator extends Application {
         loadedPath = file;
         try {
             original = ImageIO.read(loadedPath);
-            new DitherGrayscale(original);
+            loadedImage = new ImageData(original);
+            // new DitherColor(original);
             outputWritableImage = new WritableImage(original.getWidth(), original.getHeight());
             outputView.setImage(outputWritableImage);
             imagefx = SwingFXUtils.toFXImage(original, null);

@@ -37,5 +37,18 @@ Bayer 8x8
 Simple Threshold
 ![](https://raw.githubusercontent.com/homeisfar/resources/master/output4.png)
 
-Floyd-Steinberg 16 colors (Commodore 64)
+Floyd & Steinberg 16 colors (Commodore 64)
 ![](https://raw.githubusercontent.com/homeisfar/resources/master/output5.png)
+
+### Resources I've relied on
+
+http://cv.ulichney.com/papers/1993-void-cluster.pdf
+http://caca.zoy.org/study/part2.html
+http://bisqwit.iki.fi/story/howto/dither/jy/#Abstract
+https://www.google.com/patents/US6606166
+http://www.ece.ubc.ca/~irenek/techpaps/introip/manual04.html
+https://en.wikipedia.org/wiki/Dither#Algorithms
+https://en.wikipedia.org/wiki/Colour_look-up_table
+https://en.wikipedia.org/wiki/Color_difference
+https://en.wikipedia.org/wiki/RGBA_color_space
+https://en.wikipedia.org/wiki/List_of_8-bit_computer_hardware_palettes
