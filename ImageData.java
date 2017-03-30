@@ -3,7 +3,8 @@
    its internal data in an OO fashion. The method calls
    would add too much overhead. As such, DitherGrayscale.java and
    DitherColor.java manipulate the internal data of this class
-   directly. */
+   directly.
+*/
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
 
@@ -15,18 +16,18 @@ public class ImageData {
     public int length;
     public int[] imgData;   // direct access to underlying bufferedimage data
     public double[] luminosityMatrixFast;   // internal representation for operations.
-    public double[] cloneMatrix; // Copy for non-destructive error-diffusion. Probably can refactor out. //MARK
+    // public double[] cloneMatrix; // Copy for non-destructive error-diffusion. Probably can refactor out. //MARK
     // public int[] cloneMatrix;
 
     // "Master" copies of the original image for non-destructive editing
-    public int[] reds;
-    public int[] greens;
-    public int[] blues;
+    public short[] reds;
+    public short[] greens;
+    public short[] blues;
 
     // Used for destructive editing for error diffusion
-    public int[] redsMutate;
-    public int[] greensMutate;
-    public int[] bluesMutate;
+    public short[] redsMutate;
+    public short[] greensMutate;
+    public short[] bluesMutate;
 
     // public SplittableRandom rand = new SplittableRandom();
     public double luminosityScale = 1.0;
@@ -41,15 +42,15 @@ public class ImageData {
         length = width * height;
 
         luminosityMatrixFast = new double[length];
-        cloneMatrix = new double[length];
+        // cloneMatrix = new double[length];
 
-        reds = new int[length];
-        greens = new int[length];
-        blues = new int[length];
+        reds = new short[length];
+        greens = new short[length];
+        blues = new short[length];
 
-        redsMutate = new int[length];
-        greensMutate = new int[length];
-        bluesMutate = new int[length];
+        redsMutate = new short[length];
+        greensMutate = new short[length];
+        bluesMutate = new short[length];
 
         for (int i = 0; i < width; i++) {
             for (int j = 0; j < height; j++) {
@@ -59,12 +60,12 @@ public class ImageData {
                 int red = (color >>> 16) & 0xFF;
                 int green = (color >>> 8) & 0xFF;
                 int blue = (color >>> 0) & 0xFF;
-                reds[index] =  (int) red;
-                greens[index] = (int) green;
-                blues[index] = (int) blue;
-                redsMutate[index] =  (int) red;
-                greensMutate[index] = (int) green;
-                bluesMutate[index] = (int) blue;
+                reds[index] =  (short) red;
+                greens[index] = (short) green;
+                blues[index] = (short) blue;
+                redsMutate[index] =  (short) red;
+                greensMutate[index] = (short) green;
+                bluesMutate[index] = (short) blue;
 
                 luminosityMatrixFast[index] = (red * 0.21f + green * 0.71f + blue * 0.07f) / 256;
                 // cloneMatrix[index] = color;

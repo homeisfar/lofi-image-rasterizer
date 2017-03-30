@@ -1,14 +1,5 @@
-import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
-import java.util.Random;
-import java.awt.image.DataBufferInt;
-import java.util.Arrays;
 import java.util.stream.IntStream;
 import java.util.SplittableRandom;
-import java.lang.Byte;
-
-import javax.imageio.ImageIO;
 
 public class DitherColor {
 

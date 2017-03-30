@@ -15,8 +15,6 @@ import javafx.scene.image.ImageView;
 import javafx.scene.image.Image;
 import javafx.scene.image.WritableImage;
 import javafx.scene.input.KeyCode;
-import javafx.scene.layout.StackPane;
-import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
 import javafx.stage.Stage;
 import javafx.stage.FileChooser;
@@ -26,6 +24,7 @@ import javafx.embed.swing.SwingFXUtils;
 import javafx.geometry.Orientation;
 
 
+import java.awt.Graphics;
 import java.io.IOException;
 import java.awt.image.BufferedImage;
 import javax.imageio.ImageIO;
@@ -35,7 +34,7 @@ import java.util.Map;
 import java.util.logging.Logger;
 import java.util.logging.FileHandler;
 import java.util.logging.Level;
-import java.util.logging.SimpleFormatter;
+// import java.util.logging.SimpleFormatter;
 
 public class DitherComparator extends Application {
     private static final Logger LOGGER = Logger.getLogger( DitherComparator.class.getName() );
@@ -50,9 +49,10 @@ public class DitherComparator extends Application {
     private File loadedPath;
     private BufferedImage original;
     private BufferedImage output;
-    private ImageView imageView = new ImageView();
+    private ImageView previewImageView = new ImageView();
     private ImageView outputView = new ImageView();
-    private Image imagefx;
+    private ScrollPane scrollPane = new ScrollPane();
+    // private Image imagefx;
     private Image outputfx;
     private WritableImage outputWritableImage;
     private HBox horizBox = new HBox();
@@ -64,6 +64,7 @@ public class DitherComparator extends Application {
     private Label controlPixelLabel = new Label();
     private CheckBox controlBWBox = new CheckBox("Black & White");
     private ImageData loadedImage;
+    private Slider luminositySlider = new Slider(0, 3, 1.0);
 
     private Map<Button, Ditherable.Dither> functions = new HashMap<Button, Ditherable.Dither>();
 
@@ -80,7 +81,7 @@ public class DitherComparator extends Application {
         @Override
         public void handle(ActionEvent event) {
             lastButtonPressed = this.button; //MARK
-            if (original != null) {
+            if (loadedImage != null) {
                 try {
                 long startTime = System.nanoTime();
                 // CAREFUL: (1) goes together and (2) is commented out
@@ -96,13 +97,13 @@ public class DitherComparator extends Application {
                 // output = DitherGrayscale.dispatchDithering(functions.get(button)); //MARK
                 long endTime = System.nanoTime();
                 long timed = (endTime - startTime) / 1000000;
-                LOGGER.log(Level.CONFIG, "DoingWork");
+                // LOGGER.log(Level.CONFIG, "DoingWork");
                 System.out.println("algorithm time: " + timed);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
                 long startTime = System.nanoTime();
-                SwingFXUtils.toFXImage(loadedImage.output, outputWritableImage);
+                SwingFXUtils.toFXImage(loadedImage.output, outputWritableImage); // reuse output
 
                 long endTime = System.nanoTime();
                 long timed = (endTime - startTime) / 1000000;
@@ -121,7 +122,6 @@ public class DitherComparator extends Application {
 
     @Override
     public void start(Stage primaryStage) {
-        ScrollPane scrollPane = new ScrollPane();
         scrollPane.setPannable(true);
         // scrollPane.setFitToHeight(true);
         // scrollPane.setFitToWidth(true);
@@ -132,9 +132,11 @@ public class DitherComparator extends Application {
         Button controlZoomInButton = new Button(" + ");
         Button controlZoomOutButton = new Button(" - ");
         Button controlZoomResetButton = new Button(" = ");
-        Slider luminositySlider = new Slider(0, 3, 1.0);
+
         luminositySlider.setShowTickMarks(true);
         TextField luminosityTextField = new TextField (Double.toString(luminositySlider.getValue()));
+
+        controlBWBox.setSelected(true);
 
         createDitherButton(new Button("Random"), Ditherable.Dither.RANDOM);
         createDitherButton(new Button("Bayer 2x2"), Ditherable.Dither.BAYER2X2);
@@ -146,9 +148,9 @@ public class DitherComparator extends Application {
         // controlOpenButton.setText("Open Image");
         // controlSaveButton.setText("Save Image");
 
-        imageView.setFitWidth(200);
-        imageView.setPreserveRatio(true);
-        imageView.setSmooth(true);
+        previewImageView.setFitWidth(200);
+        previewImageView.setPreserveRatio(true);
+        previewImageView.setSmooth(true);
 
         outputView.setPreserveRatio(true);
         outputView.setSmooth(false);
@@ -170,7 +172,7 @@ public class DitherComparator extends Application {
             File newFile = chooser.showOpenDialog(controlOpenButton.getScene().getWindow());
             if (newFile != null) {
                 load(newFile);
-                imageView.setImage(imagefx);
+                // previewImageView.setImage(imagefx);
                 System.out.println("Image loaded");
             }
         }
@@ -201,12 +203,6 @@ public class DitherComparator extends Application {
         public void handle(ActionEvent event) {
             outputView.setScaleX(outputView.getScaleX() * 2.);
             outputView.setScaleY(outputView.getScaleY() * 2.);
-            // outputView.setTranslateX(outputView.getTranslateX());
-            // outputView.setTranslateY(outputView.getTranslateY());
-            // scrollPane.setScaleX(scrollPane.getScaleX() * 2.);
-            // scrollPane.setScaleY(scrollPane.getScaleY() * 2.);
-            // scrollPane.setTranslateX(200 );
-            // scrollPane.setTranslateY(200 );
         }
     });
 
@@ -215,10 +211,6 @@ public class DitherComparator extends Application {
         public void handle(ActionEvent event) {
             outputView.setScaleX(outputView.getScaleX() / 2.);
             outputView.setScaleY(outputView.getScaleY() / 2.);
-            // horizBox.setScaleX(horizBox.getScaleX() / 2.);
-            // horizBox.setScaleY(horizBox.getScaleY() / 2.);
-            // outputView.setTranslateX(0 + outputView.getScene().getWidth()/4);
-            // outputView.setTranslateY(0 + outputView.getScene().getHeight()/4);
         }
     });
 
@@ -227,8 +219,6 @@ public class DitherComparator extends Application {
         public void handle(ActionEvent event) {
             outputView.setScaleX(1.);
             outputView.setScaleY(1.);
-            // horizBox.setScaleX(1.);
-            // horizBox.setScaleY(1.);
             outputView.setTranslateX(0);
             outputView.setTranslateY(0);
         }
@@ -279,11 +269,11 @@ public class DitherComparator extends Application {
         controlToolbar.getItems().add(controlZoomInButton);
         controlToolbar.getItems().add(controlZoomResetButton);
         controlToolbar.getItems().add(controlPixelLabel);
-        controlToolbar.getItems().add(controlBWBox);
+        // controlToolbar.getItems().add(controlBWBox);
 
         functionToolbar.getItems().add(luminositySlider);
         functionToolbar.getItems().add(luminosityTextField);
-        functionToolbar.getItems().add(imageView);
+        functionToolbar.getItems().add(previewImageView);
 
         GridPane masterLayout = new GridPane();
         masterLayout.add(controlToolbar,1,0);
@@ -291,6 +281,8 @@ public class DitherComparator extends Application {
 
         scrollPane.setContent(horizBox);
         masterLayout.add(scrollPane,1,1);
+
+        masterLayout.add(controlBWBox,0,0);
 
         Scene scene = new Scene(masterLayout, 900, 600);
 
@@ -302,24 +294,40 @@ public class DitherComparator extends Application {
     private void load(File file) {
         loadedPath = file;
         try {
-            original = ImageIO.read(loadedPath);
-            loadedImage = new ImageData(original);
+            // original = ImageIO.read(loadedPath);
+            BufferedImage image = ImageIO.read(loadedPath);
+            loadedImage = new ImageData(image);
+            controlPixelLabel.setText("W: " + image.getWidth() + " H: " + image.getHeight());
             // new DitherColor(original);
-            outputWritableImage = new WritableImage(original.getWidth(), original.getHeight());
+            outputWritableImage = new WritableImage(image.getWidth(), image.getHeight());
             outputView.setImage(outputWritableImage);
-            imagefx = SwingFXUtils.toFXImage(original, null);
+            loadPreviewImage(image);
+            // imagefx = SwingFXUtils.toFXImage(loadedImage.output, null);
+            // previewImageView.setImage(SwingFXUtils.toFXImage(image, null));
             // fh=new FileHandler("loggerExample.log", false); //file.getName(); //MARK
             // Logger l = Logger.getLogger("");
             // fh.setFormatter(new SimpleFormatter());
             // l.addHandler(fh);
 		    // l.setLevel(Level.CONFIG);
-            controlPixelLabel.setText("W: " + original.getWidth() + " H: " + original.getHeight());
+
+
         } catch (IOException ex) {
             ex.printStackTrace();
         }
-
+        System.gc();
     }
- public static void main(String[] args) {
+
+    private void loadPreviewImage(BufferedImage img) {
+        float resizeImageScale = img.getWidth() / 200f;
+        int scaledHeight = (int) (img.getHeight() / resizeImageScale);
+        BufferedImage previewResizedImage = new BufferedImage(200, scaledHeight, BufferedImage.TYPE_INT_RGB);
+        Graphics g = previewResizedImage.createGraphics();
+        g.drawImage(img, 0, 0, 200, scaledHeight, null);
+        g.dispose();
+        previewImageView.setImage(SwingFXUtils.toFXImage(previewResizedImage, null));
+    }
+
+    public static void main(String[] args) {
         launch(args);
     }
 }

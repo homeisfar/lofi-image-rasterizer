@@ -1,14 +1,5 @@
-import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
-import java.util.Random;
-import java.awt.image.DataBufferInt;
-import java.util.Arrays;
 import java.util.stream.IntStream;
 import java.util.SplittableRandom;
-import java.lang.Byte;
-
-import javax.imageio.ImageIO;
 
 
 public class DitherGrayscale {
@@ -345,34 +336,34 @@ public class DitherGrayscale {
         //     }
         // }
 
+//MARK
+        // private static void floydSteinberg(ImageData img) {
+        //     double[] cloneMatrix = img.cloneMatrix;
+        //     System.arraycopy(img.luminosityMatrixFast, 0, cloneMatrix, 0, img.length);
+        //     for (int i = 0; i < img.height; i++) {
+        //         for (int j = 0; j < img.width; j++ ) {
+        //             int index = i * img.width + j;
+        //             double oldPixel =  (img.cloneMatrix[index]);
+        //             img.imgData[index] = oldPixel * img.luminosityScale <= 0.5 ? BLACK : WHITE;
+        //             double newPixel = img.imgData[index] == BLACK ? 0 : 1;
+        //
+        //             // imgData[index] = (int) newPixel;
+        //             double quantError = oldPixel - newPixel;
+        //             quantError = quantError < 0 ? 0
+        //                        : quantError > 1 ? 1
+        //                        : quantError;
+        //
+        //             // System.out.println(oldPixel+ " " + newPixel + " " + quantError);
+        //             if (j + 1 < img.width) img.cloneMatrix[index + 1] += quantError * (7.0 / 16.0);
+        //             if (i + 1 == img.height) continue;
+        //             if (j > 0)                     img.cloneMatrix[index + img.width - 1] += quantError * (3.0 / 16.0);
+        //             /* no if */                    img.cloneMatrix[index + img.width    ] += quantError * (5.0 / 16.0);
+        //             if (j + 1 < img.width) img.cloneMatrix[index + img.width + 1] += quantError * (7.0 / 16.0);
+        //         }
+        //     }
+        // }
 
         private static void floydSteinberg(ImageData img) {
-            double[] cloneMatrix = img.cloneMatrix;
-            System.arraycopy(img.luminosityMatrixFast, 0, cloneMatrix, 0, img.length);
-            for (int i = 0; i < img.height; i++) {
-                for (int j = 0; j < img.width; j++ ) {
-                    int index = i * img.width + j;
-                    double oldPixel =  (img.cloneMatrix[index]);
-                    img.imgData[index] = oldPixel * img.luminosityScale <= 0.5 ? BLACK : WHITE;
-                    double newPixel = img.imgData[index] == BLACK ? 0 : 1;
-
-                    // imgData[index] = (int) newPixel;
-                    double quantError = oldPixel - newPixel;
-                    quantError = quantError < 0 ? 0
-                               : quantError > 1 ? 1
-                               : quantError;
-
-                    // System.out.println(oldPixel+ " " + newPixel + " " + quantError);
-                    if (j + 1 < img.width) img.cloneMatrix[index + 1] += quantError * (7.0 / 16.0);
-                    if (i + 1 == img.height) continue;
-                    if (j > 0)                     img.cloneMatrix[index + img.width - 1] += quantError * (3.0 / 16.0);
-                    /* no if */                    img.cloneMatrix[index + img.width    ] += quantError * (5.0 / 16.0);
-                    if (j + 1 < img.width) img.cloneMatrix[index + img.width + 1] += quantError * (7.0 / 16.0);
-                }
-            }
-        }
-
-    /*    private static void floydSteinberg2() {
 
             int[] errorArrayR = new int[img.width + 1];
             int[] errorArrayG = new int[img.width + 1];
@@ -383,21 +374,13 @@ public class DitherGrayscale {
                 for (int j = 0; j < img.width - 1; j++ ) {
                      // i * output could be moved to outer loop
 
-                    int r1 = (0x000000FF & reds[index]) + errorArrayR[j + 1];
-                    int g1 = (0x000000FF & greens[index]) + errorArrayG[j + 1];
-                    int b1 = (0x000000FF & blues[index]) + errorArrayB[j + 1];
+                    int r1 = img.reds[index] + errorArrayR[j + 1];
+                    int g1 = img.greens[index] + errorArrayG[j + 1];
+                    int b1 = img.blues[index] + errorArrayB[j + 1];
 
-                    r1 *= luminosityScale;
-                    g1 *= luminosityScale;
-                    b1 *= luminosityScale;
-
-                    // System.out.println(r1 +" "+g1 + " "+b1 );
-
-                    // int oldPixel = r1;
-                    // oldPixel = oldPixel << 8;
-                    // oldPixel += g1;
-                    // oldPixel = oldPixel << 8;
-                    // oldPixel += b1;
+                    // r1 *= img.luminosityScale;
+                    // g1 *= img.luminosityScale;
+                    // b1 *= img.luminosityScale;
 
                     int r2 = 0;
                     int g2 = 0;
@@ -418,25 +401,7 @@ public class DitherGrayscale {
                     int quantErrorG = g1 - g2;
                     int quantErrorB = b1 - b2;
 
-                    // quantErrorR = quantErrorR < 0 ? 0
-                    //             : quantErrorR > 0xFF ? 0xFF
-                    //             : quantErrorR;
-                    //
-                    // quantErrorG = quantErrorG < 0 ? 0
-                    //             : quantErrorG > 0xFF ? 0xFF
-                    //             : quantErrorG;
-                    //
-                    // quantErrorB = quantErrorB < 0 ? 0
-                    //             : quantErrorB > 0xFF ? 0xFF
-                    //             : quantErrorB;
-
-
-                    imgData[index] = newPixel;// | 0xFF000000;
-
-                    //TODO CONVERT THIS TO RGB COMPARE EACH RGB
-
-
-                    // if (i + 1 == img.height) continue;
+                    img.imgData[index] = newPixel;// | 0xFF000000;
 
                     // r  * 0.4375  7/16
                     // ll * 0.1875  3/16
@@ -445,31 +410,31 @@ public class DitherGrayscale {
 
                     // lower left pixel
                 if (j != 0) {
-                    errorArrayR[j - 1] += quantErrorR * 3 / 16;
-                    errorArrayG[j - 1] += quantErrorG * 3 / 16;
-                    errorArrayB[j - 1] += quantErrorB * 3 / 16;
+                    errorArrayR[j - 1] += quantErrorR * 3 / 16.;
+                    errorArrayG[j - 1] += quantErrorG * 3 / 16.;
+                    errorArrayB[j - 1] += quantErrorB * 3 / 16.;
                 }
 
                 // below
-                    errorArrayR[j] += quantErrorR * 5 / 16;
-                    errorArrayG[j] += quantErrorG * 5 / 16;
-                    errorArrayB[j] += quantErrorB * 5 / 16;
+                    errorArrayR[j] += quantErrorR * 5 / 16.;
+                    errorArrayG[j] += quantErrorG * 5 / 16.;
+                    errorArrayB[j] += quantErrorB * 5 / 16.;
 
                 // lower right
-                    errorArrayR[j + 1] = quantErrorR * 1 / 16;
-                    errorArrayG[j + 1] = quantErrorG * 1 / 16;
-                    errorArrayB[j + 1] = quantErrorB * 1 / 16;
+                    errorArrayR[j + 1] = quantErrorR / 16;
+                    errorArrayG[j + 1] = quantErrorG / 16;
+                    errorArrayB[j + 1] = quantErrorB / 16;
 
                 // right
-                    errorArrayR[j + 2] += quantErrorR * 7 / 16;
-                    errorArrayG[j + 2] += quantErrorG * 7 / 16;
-                    errorArrayB[j + 2] += quantErrorB * 7 / 16;
+                    errorArrayR[j + 2] += quantErrorR * 7 / 16.;
+                    errorArrayG[j + 2] += quantErrorG * 7 / 16.;
+                    errorArrayB[j + 2] += quantErrorB * 7 / 16.;
 
                     index ++;
                 }
             }
         }
-        */
+
 
 
         /* FS
