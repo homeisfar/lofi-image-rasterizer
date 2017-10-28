@@ -62,6 +62,14 @@ public class DitherColor {
 			new RGB(255, 255, 255)  // white
 		};
 		
+		static RGB[] cgaPalette = new RGB[]{
+            new RGB(  0,   0,   0), // black
+            new RGB(226,  66, 251), // purple
+            new RGB( 43, 201,  36), // green
+            new RGB( 40, 156, 251), // blue
+            new RGB(226, 101,  30), // orange
+		};
+		
         /*
         black 0, 0, 0
         gray 104, 104, 104
