@@ -22,7 +22,9 @@ public class DitherColor {
         // private static final int BLACK = 0xFF000000;
         // private static final int WHITE = 0xFFFFFFFF;
 
-        static RGB[] palette = new RGB[]{
+		private static RGB[] palette = c64Palette;
+		
+        static RGB[] c64Palette = new RGB[]{
             new RGB(  0,   0,   0), // black
             new RGB(104, 104, 104), // gray
             new RGB(  0,  35, 174), // dark blue
@@ -38,8 +40,28 @@ public class DitherColor {
             new RGB(196, 105,  43), // brown
             new RGB(255, 252, 135), // yellow
             new RGB(184, 184, 184), // light gray
-            new RGB(255, 255, 255) // white
+            new RGB(255, 255, 255)  // white
         };
+		
+		static RGB[] appleIIPalette = new RGB[]{
+            new RGB(  0,   0,   0), // black
+            new RGB( 81,  93,  34), // olive
+            new RGB(136,  61,  81), // plum
+            new RGB(241, 127,  54), // orange
+            new RGB( 82,  72, 133), // dark blue
+            new RGB(145, 145, 145), // gray #1
+            new RGB(240,  90, 234), // purple
+            new RGB(250, 183, 200), // pink
+            new RGB(  0, 104,  84), // dark green
+            new RGB(  0, 201,  70), // light green
+            new RGB(145, 145, 145), // gray #2
+            new RGB(201, 210, 158), // sand
+            new RGB(  0, 165, 236), // medium blue
+            new RGB(146, 219, 203), // aqua
+            new RGB(201, 193, 244), // periwinkle
+			new RGB(255, 255, 255)  // white
+		};
+		
         /*
         black 0, 0, 0
         gray 104, 104, 104
